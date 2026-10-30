@@ -1,7 +1,7 @@
 # Deposit360 cloud deployment
 
-The web app is deployed on Vercel. The FastAPI backend runs on Render, PostgreSQL
-is provided by Neon, and PDF evidence is stored in Cloudflare R2. The API uses the
+The deployment setup uses Vercel for the web app, Render for the FastAPI backend,
+Neon for PostgreSQL, and Cloudflare R2 for PDF evidence. The API uses the
 S3-compatible R2 API; it does not depend on a Render filesystem for uploaded files.
 
 ## 1. Create persistent services
@@ -28,9 +28,10 @@ through the Render dashboard:
 - `DATABASE_URL`: the Neon URL in the SQLAlchemy format above.
 - `CORS_ORIGINS`: the exact production Vercel origin, for example
   `https://deposit360.vercel.app` (no trailing slash).
-- `DEMO_PASSWORD`: a private, unique password to use only if synthetic demo
-  accounts are seeded. Production seeding refuses to use the published local
-  demo password.
+- `DEMO_PASSWORD`: set this before seeding demo accounts. The login page exposes
+  the shared quick-login password (`Demo360-SIH-2026!`) in its client bundle.
+  Use the shared value only for a public demo with fabricated data; for private
+  deployments, do not seed public demo accounts.
 - `STORAGE_S3_ENDPOINT_URL`: `https://<account-id>.r2.cloudflarestorage.com`.
 - `STORAGE_S3_BUCKET`: the private bucket name.
 - `STORAGE_S3_ACCESS_KEY_ID` and `STORAGE_S3_SECRET_ACCESS_KEY`: the R2 token
@@ -43,7 +44,9 @@ when idle; choose a paid plan only if always-on availability is needed.
 The API health check is `/health`. On startup, the service applies Alembic
 migrations. After deployment, seed synthetic walkthrough records only if needed:
 run `python -m app.demo_seed` in the Render Shell. Do not seed demo data into a
-production environment that contains real customer records.
+production environment that contains real customer records. If you seed the
+public demo roles, any visitor can use the published quick-login credentials;
+keep that deployment's data synthetic.
 
 ## 3. Deploy the web app on Vercel
 
