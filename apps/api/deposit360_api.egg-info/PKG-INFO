@@ -4,6 +4,7 @@ Version: 0.1.0
 Summary: Deposit360 FDR lifecycle management API
 Requires-Python: >=3.11
 Requires-Dist: alembic>=1.13
+Requires-Dist: boto3>=1.35
 Requires-Dist: email-validator>=2.1
 Requires-Dist: fastapi>=0.115
 Requires-Dist: python-dotenv>=1.0

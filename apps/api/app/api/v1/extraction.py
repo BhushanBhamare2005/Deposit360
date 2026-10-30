@@ -1,5 +1,4 @@
 import uuid
-from pathlib import Path
 
 import pymupdf as fitz
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
-from app.core.config import get_settings
 from app.core.permissions import Role, has_role, is_applicant, is_staff
 from app.db.session import get_db
 from app.models.document import Document
@@ -18,6 +16,7 @@ from app.models.user import User
 from app.schemas.workflows import ExtractedFieldRead, ExtractionRead
 from app.services.audit_service import record_event
 from app.services.extraction_service import OCRUnavailableError, extract_from_pdf
+from app.services.storage_service import read_file
 
 router = APIRouter(prefix="/documents", tags=["document extraction"])
 
@@ -42,12 +41,12 @@ def extract_document_fields(
         and not is_staff(user.roles)
     ):
         raise HTTPException(status_code=404, detail="Document not found")
-    storage_root = Path(get_settings().storage_local_path).resolve()
-    file_path = (storage_root / document.storage_key).resolve()
-    if file_path.parent != storage_root or not file_path.is_file():
-        raise HTTPException(status_code=404, detail="Stored document not found")
     try:
-        result = extract_from_pdf(file_path.read_bytes())
+        pdf_content = read_file(document.storage_key)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Stored document not found") from exc
+    try:
+        result = extract_from_pdf(pdf_content)
     except OCRUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except (fitz.FileDataError, TesseractError, TesseractNotFoundError) as exc:

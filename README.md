@@ -80,6 +80,12 @@ docker compose -f infra/docker/docker-compose.yml down
 The API applies the Alembic schema migration at startup. The API image includes
 Tesseract for OCR; Docker Compose itself must be installed to run this stack.
 
+## Cloud deployment
+
+See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the Vercel frontend, Render
+FastAPI service, Neon PostgreSQL database, and Cloudflare R2 document storage
+setup.
+
 ## Tests
 
 ```powershell

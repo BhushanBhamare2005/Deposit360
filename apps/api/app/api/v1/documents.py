@@ -1,9 +1,9 @@
 import hashlib
 import uuid
-from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -17,7 +17,7 @@ from app.models.instrument import Instrument
 from app.models.user import User
 from app.schemas.document import DocumentRead
 from app.services.audit_service import record_event
-from app.services.storage_service import delete_file, save_pdf
+from app.services.storage_service import delete_file, read_file, save_pdf
 
 router = APIRouter(prefix="/instruments", tags=["documents"])
 _settings = get_settings()
@@ -104,7 +104,7 @@ def download_document(
     document_id: uuid.UUID,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
-) -> FileResponse:
+) -> Response:
     instrument = db.get(Instrument, instrument_id)
     if instrument is None or (
         instrument.institution_id != user.institution_id and not is_staff(user.roles)
@@ -118,11 +118,16 @@ def download_document(
     )
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
-    path = (Path(_settings.storage_local_path).resolve() / document.storage_key).resolve()
-    if path.parent != Path(_settings.storage_local_path).resolve() or not path.is_file():
-        raise HTTPException(status_code=404, detail="Stored document not found")
-    return FileResponse(
-        path,
+    try:
+        content = read_file(document.storage_key)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Stored document not found") from exc
+    return Response(
+        content=content,
         media_type="application/pdf",
-        filename=document.original_filename,
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename*=UTF-8''{quote(document.original_filename)}"
+            )
+        },
     )
