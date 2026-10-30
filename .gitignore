@@ -1,0 +1,35 @@
+# JavaScript
+node_modules/
+.next/
+.next-e2e/
+test-results/
+playwright-report/
+out/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local configuration and generated data
+.env
+.env.*
+!.env.example
+!.env.test
+!.env.local.example
+deposit360.db
+_storage/
+apps/api/_storage/
+apps/api/_storage_test/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json

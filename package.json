@@ -1,0 +1,22 @@
+{
+  "name": "deposit360",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "build:web": "npm --workspace apps/web run build",
+    "lint:web": "npm --workspace apps/web run lint"
+  },
+  "engines": {
+    "node": ">=20.9"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.32"
+    }
+  }
+}
