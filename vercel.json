@@ -1,0 +1,28 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "api": {
+      "root": "apps/api/",
+      "framework": "fastapi",
+      "entrypoint": "app.main:app"
+    },
+    "web": {
+      "root": "apps/web/",
+      "framework": "nextjs",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "api",
+          "format": "url",
+          "env": "BACKEND_URL"
+        }
+      ]
+    }
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": { "service": "web" } }
+  ],
+  "crons": [
+    { "path": "/api/cron/lifecycle", "schedule": "0 8 * * *" }
+  ]
+}

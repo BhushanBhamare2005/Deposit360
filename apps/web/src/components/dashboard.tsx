@@ -16,7 +16,7 @@ import type {
   User
 } from "@deposit360/shared";
 
-import { api } from "@/lib/api";
+import { api, MAX_UPLOAD_SIZE_MB } from "@/lib/api";
 import { HelpdeskCopilot } from "@/components/helpdesk-copilot";
 import { WorkspaceSidebar } from "@/components/workspace-sidebar";
 
@@ -294,7 +294,7 @@ export function Dashboard({ token, user, onInstitutionCreated, onSignOut }: Dash
 
       {user.institution_id && (
         <section className="panel">
-          <SectionHeading title="Upload a document" detail="PDF documents are stored with a checksum for integrity." />
+          <SectionHeading title="Upload a document" detail={`PDF documents are stored with a checksum for integrity. Maximum size: ${MAX_UPLOAD_SIZE_MB} MB.`} />
           <form className="upload-form" onSubmit={uploadPdf}>
             <select name="instrument_id" required disabled={instruments.length === 0} aria-label="Deposit for document">
               <option value="">Select a deposit</option>

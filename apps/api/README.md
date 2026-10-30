@@ -96,8 +96,6 @@ database is available before starting the API.
   and set `TESSERACT_CMD` if it is not on `PATH`. The API returns an explicit
   error rather than claiming OCR succeeded when Tesseract is unavailable.
 - The lifecycle scheduler refreshes maturity states and sends recurring in-app
-  maturity reminders. Configure `LIFECYCLE_SCHEDULER_ENABLED`,
-  `LIFECYCLE_SCHEDULER_INTERVAL_SECONDS`, and
-  `MATURITY_REMINDER_INTERVAL_DAYS` as needed. The in-process scheduler is intended
-  for a single API process; for multi-worker or multi-replica deployments, run
-  only one scheduler-enabled instance to prevent duplicate jobs.
+  maturity reminders in a persistent local API process. Vercel disables this
+  in-process scheduler; maturity states refresh when the deposits list is
+  requested. See the root deployment guide for serverless limitations.

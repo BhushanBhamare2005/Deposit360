@@ -12,7 +12,6 @@ app/adapters/sms_sender.py
 app/adapters/storage/__init__.py
 app/adapters/storage/base.py
 app/adapters/storage/local_storage.py
-app/adapters/storage/s3_storage.py
 app/api/__init__.py
 app/api/deps.py
 app/api/v1/__init__.py

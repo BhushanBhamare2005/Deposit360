@@ -1,71 +1,91 @@
-# Deposit360 cloud deployment
+# Deposit360 deployment on Vercel
 
-The deployment setup uses Vercel for the web app, Render for the FastAPI backend,
-Neon for PostgreSQL, and Cloudflare R2 for PDF evidence. The API uses the
-S3-compatible R2 API; it does not depend on a Render filesystem for uploaded files.
+Deposit360 deploys as one Vercel project with two services: a public Next.js
+frontend and a private FastAPI backend. The frontend's same-origin `/api/v1/*`
+route forwards authenticated requests over a Vercel service binding. PostgreSQL
+stores durable application data, and private Vercel Blob stores PDF evidence.
 
-## 1. Create persistent services
+## Before the first deployment
 
-Create a PostgreSQL project in Neon and copy its pooled or direct connection URL.
-Set the SQLAlchemy URL to use the installed psycopg driver:
+1. Import the GitHub repository into Vercel and select the repository root as the
+   project root. Keep the root `vercel.json`; it defines both services.
+2. Connect a Neon PostgreSQL database through the Vercel Storage/Marketplace
+   integration. Use a pooled connection URL, and configure separate
+   `DATABASE_URL` values for Development, Preview, and Production as needed.
+   Do not point a demo or preview deployment at a database containing real
+   financial records.
+3. Create a **private** Vercel Blob store and connect it to this Vercel project.
+   The integration supplies the Blob store ID and Vercel OIDC credentials to
+   the runtime. Do not make financial documents public or copy a Blob token into
+   source code.
+4. Configure the following Vercel environment variables for every environment
+   where the app should run:
 
-```text
-postgresql+psycopg://USER:PASSWORD@HOST/DATABASE?sslmode=require
+   | Variable | Value |
+   | --- | --- |
+   | `APP_ENV` | `production` for Production; use an appropriate value for Preview/Development |
+   | `SECRET_KEY` | A unique, randomly generated secret |
+   | `DATABASE_URL` | That environment's Neon PostgreSQL pooled connection URL |
+   | `STORAGE_BACKEND` | `vercel_blob` |
+   | `MAX_UPLOAD_SIZE_MB` | `4` |
+   | `NEXT_PUBLIC_API_URL` | `/api/v1` |
+   | `NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB` | `4` |
+   | `CRON_SECRET` | A randomly generated secret of at least 16 characters |
+   | `LIFECYCLE_SCHEDULER_ENABLED` | `false` |
+
+   Set `DEMO_PASSWORD` only if you intend to seed the synthetic role-play
+   accounts. The quick-login buttons publish the shared demo password in the
+   browser bundle, so this is appropriate only for fabricated demo data. Never
+   use that shared account password with real customer data.
+
+5. Redeploy after connecting storage and configuring the environment variables.
+   The API service's build command applies Alembic migrations using that
+   environment's database. The FastAPI startup skips migrations and the
+   in-process scheduler on Vercel; lifecycle states still refresh when the
+   deposits list is requested.
+
+## Seed synthetic demo accounts (optional)
+
+To seed the five role accounts, pull the intended environment variables to a
+local ignored env file using the Vercel CLI, then run the seed script from
+`apps/api`. Keep the file private and do not paste its contents into chat or
+commit it:
+
+```powershell
+cd apps/api
+python -m pip install -e .
+python -m app.demo_seed
 ```
 
-In Cloudflare, create a private R2 bucket and an R2 API token with object read/write
-access limited to that bucket. Record the account-specific S3 endpoint, bucket
-name, access key ID, and secret access key. Do not put credentials in the
-repository or send them in chat.
+The seed command refuses to use its published demo password in production unless
+`DEMO_PASSWORD` is explicitly set. Only use synthetic records in an environment
+where the shared demo credentials are enabled.
 
-## 2. Deploy the API on Render
+## Uploads, OCR, and lifecycle
 
-Create a Render Blueprint from the Deposit360 GitHub repository and approve the
-root `render.yaml`. The service builds `infra/docker/Dockerfile.api` using the
-repository root as its Docker context. Set these Render environment variables
-through the Render dashboard:
+Vercel Function request bodies are limited to 4.5 MB. Deposit360 therefore caps
+PDF uploads at 4 MB on Vercel to leave room for multipart form overhead. The
+limit is configurable for local development, but increasing it on Vercel will
+cause larger requests to be rejected before reaching the API.
 
-- `DATABASE_URL`: the Neon URL in the SQLAlchemy format above.
-- `CORS_ORIGINS`: the exact production Vercel origin, for example
-  `https://deposit360.vercel.app` (no trailing slash).
-- `DEMO_PASSWORD`: set this before seeding demo accounts. The login page exposes
-  the shared quick-login password (`Demo360-SIH-2026!`) in its client bundle.
-  Use the shared value only for a public demo with fabricated data; for private
-  deployments, do not seed public demo accounts.
-- `STORAGE_S3_ENDPOINT_URL`: `https://<account-id>.r2.cloudflarestorage.com`.
-- `STORAGE_S3_BUCKET`: the private bucket name.
-- `STORAGE_S3_ACCESS_KEY_ID` and `STORAGE_S3_SECRET_ACCESS_KEY`: the R2 token
-  credentials.
+Text extraction works for text-based PDFs. Scanned-PDF OCR requires the
+Tesseract executable; the Vercel Python runtime does not install it
+automatically, so scanned-document OCR remains unavailable unless a compatible
+Tesseract binary is added to the deployment.
 
-The Blueprint generates `SECRET_KEY`. Keep the initial service on one instance
-so the in-process lifecycle scheduler runs once. Render's free service may sleep
-when idle; choose a paid plan only if always-on availability is needed.
+The serverless API does not run a persistent background process. A secured
+Vercel Cron Job invokes the lifecycle refresh daily at 08:00 UTC, which updates
+maturity states and queues recurring in-app reminders. Hobby projects can run
+cron jobs at most once per day, with up to 59 minutes of scheduling variance.
+The authenticated deposits list also refreshes lifecycle states on access.
 
-The API health check is `/health`. On startup, the service applies Alembic
-migrations. After deployment, seed synthetic walkthrough records only if needed:
-run `python -m app.demo_seed` in the Render Shell. Do not seed demo data into a
-production environment that contains real customer records. If you seed the
-public demo roles, any visitor can use the published quick-login credentials;
-keep that deployment's data synthetic.
-
-## 3. Deploy the web app on Vercel
-
-Import the same GitHub repository into Vercel and set the project root to
-`apps/web`. Keep the shared npm workspace enabled. Set this build-time environment
-variable for Production (and Preview only if a separate API/CORS origin is set):
-
-```text
-NEXT_PUBLIC_API_URL=https://<render-service>.onrender.com/api/v1
-```
-
-Deploy the frontend, then add its final production origin to the Render
-`CORS_ORIGINS` value and redeploy the API if necessary. The frontend and API
-origins must match exactly; do not use `*` for the production API.
-
-## Local verification and limitations
+## Local development and verification
 
 Local development continues to use SQLite and local PDF storage by default.
-Deployments must set `STORAGE_BACKEND=s3` and all four R2 settings. The current
-demo bank-verification and email/SMS adapters remain simulated/log-based unless
-real authorized providers are configured. OCR and matching scores are never
-proof of bank authenticity.
+Set `NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1` in
+`apps/web/.env.local`, and use `STORAGE_BACKEND=local` in `apps/api/.env`.
+See the repository README for setup and test commands.
+
+The API's mock bank-verification adapter and log-based email/SMS adapters remain
+the defaults. OCR and match scores are not proof of bank authenticity, and no
+bank is contacted unless an authorized verification provider is configured.

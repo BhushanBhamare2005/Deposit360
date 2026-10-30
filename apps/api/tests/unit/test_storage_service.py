@@ -24,57 +24,43 @@ def test_storage_rejects_path_traversal():
         storage_service.read_file("../outside.pdf")
 
 
-def test_s3_storage_saves_reads_and_deletes_pdf(monkeypatch):
+def test_vercel_blob_storage_saves_reads_and_deletes_pdf(monkeypatch):
     settings = Settings(
-        storage_backend="s3",
-        storage_s3_endpoint_url="https://account.r2.cloudflarestorage.com",
-        storage_s3_bucket="deposit360-documents",
-        storage_s3_access_key_id="test-access-key",
-        storage_s3_secret_access_key="test-secret-key",
+        storage_backend="vercel_blob",
     )
 
-    class FakeS3Client:
+    class FakeVercelBlob:
         def __init__(self):
             self.objects: dict[str, bytes] = {}
             self.upload_metadata: dict[str, str] = {}
             self.deleted: list[str] = []
 
-        def put_object(self, *, Bucket: str, Key: str, Body: bytes, ContentType: str):
-            self.objects[Key] = Body
-            self.upload_metadata = {"bucket": Bucket, "content_type": ContentType}
+        def put_blob(self, key: str, body: bytes, *, access: str, content_type: str):
+            self.objects[key] = body
+            self.upload_metadata = {"access": access, "content_type": content_type}
 
-        def get_object(self, *, Bucket: str, Key: str):
-            return {"Body": _FakeBody(self.objects[Key])}
+        def get_blob(self, key: str, *, access: str):
+            assert access == "private"
+            return _FakeBlobResult(self.objects[key])
 
-        def delete_object(self, *, Bucket: str, Key: str):
-            self.deleted.append(Key)
-            self.objects.pop(Key, None)
+        def delete_blob(self, key: str):
+            self.deleted.append(key)
+            self.objects.pop(key, None)
 
-    class _FakeBody:
+    class _FakeBlobResult:
         def __init__(self, content: bytes):
-            self.content = content
+            self.body = content
 
-        def read(self) -> bytes:
-            return self.content
-
-    fake_client = FakeS3Client()
+    fake_blob = FakeVercelBlob()
     monkeypatch.setattr(storage_service, "get_settings", lambda: settings)
-    monkeypatch.setattr(storage_service, "_s3_client", lambda _settings: fake_client)
+    monkeypatch.setattr(storage_service, "blob_sync", fake_blob)
 
-    key = storage_service.save_pdf(b"%PDF-remote")
+    key = storage_service.save_pdf(b"%PDF-vercel")
 
-    assert fake_client.upload_metadata == {
-        "bucket": "deposit360-documents",
+    assert fake_blob.upload_metadata == {
+        "access": "private",
         "content_type": "application/pdf",
     }
-    assert storage_service.read_file(key) == b"%PDF-remote"
+    assert storage_service.read_file(key) == b"%PDF-vercel"
     storage_service.delete_file(key)
-    assert fake_client.deleted == [key]
-
-
-def test_s3_storage_reports_missing_configuration(monkeypatch):
-    settings = Settings(storage_backend="s3")
-    monkeypatch.setattr(storage_service, "get_settings", lambda: settings)
-
-    with pytest.raises(RuntimeError, match="S3 storage requires"):
-        storage_service.save_pdf(b"%PDF")
+    assert fake_blob.deleted == [key]

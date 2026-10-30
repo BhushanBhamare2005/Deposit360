@@ -14,6 +14,14 @@ if _is_sqlite:
     _engine_options["connect_args"] = {"check_same_thread": False}
     if ":memory:" in _database_url:
         _engine_options["poolclass"] = StaticPool
+else:
+    _engine_options.update(
+        pool_pre_ping=True,
+        pool_size=1,
+        max_overflow=1,
+        pool_timeout=10,
+        pool_recycle=300,
+    )
 
 engine = create_engine(_database_url, **_engine_options)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)

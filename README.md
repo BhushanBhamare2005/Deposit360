@@ -50,9 +50,10 @@ never contact a bank unless an HTTP provider is explicitly configured. Email and
 SMS default to a local development log sink; configure HTTP delivery endpoints and
 their optional API keys to connect messaging providers. The API also supports
 Tesseract OCR for scanned PDFs; install Tesseract locally and set `TESSERACT_CMD`
-if it is not on `PATH`. An enabled background scheduler refreshes lifecycle states
-and maturity reminders hourly by default. In multi-instance deployments, enable
-the scheduler on only one API instance.
+if it is not on `PATH`. The local API scheduler refreshes lifecycle states and
+maturity reminders hourly by default. Vercel uses a secured daily Cron Job on
+the free plan; lifecycle states also refresh whenever the deposits list is
+requested.
 
 The web app's deterministic end-to-end tests use a mocked API and do not require
 provider credentials:
@@ -82,9 +83,8 @@ Tesseract for OCR; Docker Compose itself must be installed to run this stack.
 
 ## Cloud deployment
 
-See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the Vercel frontend, Render
-FastAPI service, Neon PostgreSQL database, and Cloudflare R2 document storage
-setup.
+See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the Vercel Services setup,
+Neon PostgreSQL integration, and private Vercel Blob document storage.
 
 ## Tests
 

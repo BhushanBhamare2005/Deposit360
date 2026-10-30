@@ -1,10 +1,10 @@
 import uuid
 from pathlib import Path
 
-import boto3
-from botocore.exceptions import ClientError
+from vercel import blob
+from vercel.blob import sync as blob_sync
 
-from app.core.config import Settings, get_settings
+from app.core.config import get_settings
 
 
 def _validate_key(storage_key: str) -> None:
@@ -12,33 +12,15 @@ def _validate_key(storage_key: str) -> None:
         raise ValueError("Invalid storage key")
 
 
-def _s3_client(settings: Settings):
-    required = (
-        settings.storage_s3_endpoint_url,
-        settings.storage_s3_bucket,
-        settings.storage_s3_access_key_id,
-        settings.storage_s3_secret_access_key,
-    )
-    if not all(required):
-        raise RuntimeError("S3 storage requires an endpoint, bucket, access key, and secret key")
-    return boto3.client(
-        "s3",
-        endpoint_url=settings.storage_s3_endpoint_url,
-        aws_access_key_id=settings.storage_s3_access_key_id,
-        aws_secret_access_key=settings.storage_s3_secret_access_key,
-        region_name=settings.storage_s3_region,
-    )
-
-
 def save_pdf(content: bytes) -> str:
     settings = get_settings()
     key = f"{uuid.uuid4()}.pdf"
-    if settings.storage_backend == "s3":
-        _s3_client(settings).put_object(
-            Bucket=settings.storage_s3_bucket,
-            Key=key,
-            Body=content,
-            ContentType="application/pdf",
+    if settings.storage_backend == "vercel_blob":
+        blob_sync.put_blob(
+            key,
+            content,
+            access="private",
+            content_type="application/pdf",
         )
     else:
         storage_root = Path(settings.storage_local_path).resolve()
@@ -50,17 +32,11 @@ def save_pdf(content: bytes) -> str:
 def read_file(storage_key: str) -> bytes:
     _validate_key(storage_key)
     settings = get_settings()
-    if settings.storage_backend == "s3":
+    if settings.storage_backend == "vercel_blob":
         try:
-            result = _s3_client(settings).get_object(
-                Bucket=settings.storage_s3_bucket,
-                Key=storage_key,
-            )
-        except ClientError as exc:
-            if exc.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
-                raise FileNotFoundError("Stored document not found") from exc
-            raise
-        return result["Body"].read()
+            return blob_sync.get_blob(storage_key, access="private").body
+        except blob.BlobNotFoundError as exc:
+            raise FileNotFoundError("Stored document not found") from exc
     storage_root = Path(settings.storage_local_path).resolve()
     target = (storage_root / storage_key).resolve()
     if target.parent != storage_root or not target.is_file():
@@ -71,11 +47,8 @@ def read_file(storage_key: str) -> bytes:
 def delete_file(storage_key: str) -> None:
     _validate_key(storage_key)
     settings = get_settings()
-    if settings.storage_backend == "s3":
-        _s3_client(settings).delete_object(
-            Bucket=settings.storage_s3_bucket,
-            Key=storage_key,
-        )
+    if settings.storage_backend == "vercel_blob":
+        blob_sync.delete_blob(storage_key)
         return
     storage_root = Path(settings.storage_local_path).resolve()
     target = (storage_root / storage_key).resolve()

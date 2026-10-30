@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from typing import Literal
 
@@ -17,6 +18,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     app_env: str = "development"
     demo_password: str = ""
+    cron_secret: str = ""
     api_prefix: str = "/api/v1"
     secret_key: str = ""
     access_token_expire_minutes: int = Field(default=60, gt=0)
@@ -24,12 +26,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./deposit360.db"
     database_echo: bool = False
     storage_local_path: str = "./_storage"
-    storage_backend: Literal["local", "s3"] = "local"
-    storage_s3_endpoint_url: str = ""
-    storage_s3_bucket: str = ""
-    storage_s3_access_key_id: str = ""
-    storage_s3_secret_access_key: str = ""
-    storage_s3_region: str = "auto"
+    storage_backend: Literal["local", "vercel_blob"] = "local"
     max_upload_size_mb: int = Field(default=20, gt=0)
     bank_verification_adapter: Literal["mock", "http"] = "mock"
     bank_verification_url: str = ""
@@ -60,7 +57,10 @@ class Settings(BaseSettings):
 
     @property
     def max_upload_size_bytes(self) -> int:
-        return self.max_upload_size_mb * 1024 * 1024
+        configured_limit = self.max_upload_size_mb * 1024 * 1024
+        if os.getenv("VERCEL"):
+            return min(configured_limit, 4 * 1024 * 1024)
+        return configured_limit
 
 
 @lru_cache

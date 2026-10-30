@@ -9,7 +9,10 @@ npm run dev:web
 ```
 
 Set `NEXT_PUBLIC_API_URL` to the API's `/api/v1` base URL. The default local value
-is `http://localhost:8000/api/v1`. See the repository README for API setup.
+is `http://localhost:8000/api/v1`; Vercel uses `/api/v1` through the private
+service binding. `NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB` controls the browser-side PDF
+limit and is set to `4` for Vercel's request-body limit. See the repository
+README for API setup.
 
 ## End-to-end tests
 

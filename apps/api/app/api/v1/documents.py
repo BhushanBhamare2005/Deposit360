@@ -7,6 +7,7 @@ from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import get_current_user
 from app.core.config import get_settings
@@ -53,7 +54,7 @@ async def upload_document(
 
     original_filename = (file.filename or "document.pdf").replace("\\", "/").rsplit("/", 1)[-1]
     original_filename = original_filename[:255] or "document.pdf"
-    storage_key = save_pdf(content)
+    storage_key = await run_in_threadpool(save_pdf, content)
     document = Document(
         instrument_id=instrument.id,
         original_filename=original_filename,
@@ -77,7 +78,7 @@ async def upload_document(
         db.commit()
     except SQLAlchemyError:
         db.rollback()
-        delete_file(storage_key)
+        await run_in_threadpool(delete_file, storage_key)
         raise
     db.refresh(document)
     return document

@@ -15,9 +15,12 @@ import type {
   VerificationCheck
 } from "@deposit360/shared";
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(
-  /\/$/,
-  ""
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === "production" ? "/api/v1" : "http://localhost:8000/api/v1")
+).replace(/\/$/, "");
+export const MAX_UPLOAD_SIZE_MB = Number(
+  process.env.NEXT_PUBLIC_MAX_UPLOAD_SIZE_MB || (process.env.NODE_ENV === "production" ? 4 : 20)
 );
 
 type RequestOptions = Omit<RequestInit, "headers"> & {
@@ -127,6 +130,9 @@ export const api = {
       body: JSON.stringify({ title, description })
     }),
   uploadDocument: (token: string, instrumentId: string, file: File) => {
+    if (file.size > MAX_UPLOAD_SIZE_MB * 1024 * 1024) {
+      throw new Error(`PDFs must be ${MAX_UPLOAD_SIZE_MB} MB or smaller.`);
+    }
     const body = new FormData();
     body.append("file", file);
     return request<DocumentRecord>(`/instruments/${instrumentId}/documents`, {
