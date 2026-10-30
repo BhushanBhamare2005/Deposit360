@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     app_name: str = "Deposit360"
     app_version: str = "0.1.0"
     app_env: str = "development"
+    demo_password: str = ""
     api_prefix: str = "/api/v1"
     secret_key: str = ""
     access_token_expire_minutes: int = Field(default=60, gt=0)

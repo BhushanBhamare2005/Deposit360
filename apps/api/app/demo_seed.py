@@ -8,6 +8,7 @@ from decimal import Decimal
 import pymupdf as fitz
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.core.security import hash_password
 from app.db.init_db import upgrade_database
 from app.db.session import SessionLocal
@@ -31,7 +32,7 @@ from app.services.storage_service import save_pdf
 
 logger = logging.getLogger(__name__)
 
-DEMO_PASSWORD = "Demo360-SIH-2026!"
+LOCAL_DEMO_PASSWORD = "Demo360-SIH-2026!"
 DEMO_USERS = (
     ("applicant.deposit360@example.com", "Institution Applicant", "institution_applicant"),
     ("scrutiny.deposit360@example.com", "Scrutiny Officer", "scrutiny_officer"),
@@ -67,6 +68,15 @@ def _synthetic_pdf(instrument: Instrument) -> bytes:
 
 
 def seed_demo_data() -> None:
+    settings = get_settings()
+    demo_password = settings.demo_password
+    if not demo_password:
+        if settings.app_env.lower() not in {"development", "dev", "test"}:
+            raise RuntimeError(
+                "Set DEMO_PASSWORD to a private password before seeding demo accounts "
+                "outside development."
+            )
+        demo_password = LOCAL_DEMO_PASSWORD
     upgrade_database()
     with SessionLocal() as db:
         existing = db.scalar(select(Institution).where(Institution.code == "DEMO-SIH-001"))
@@ -102,7 +112,7 @@ def seed_demo_data() -> None:
             existing.contact_email = DEMO_USERS[0][0]
             db.commit()
             print("Synthetic demo records already exist; role account emails are synchronized.")
-            print(f"Password for all five demo accounts: {DEMO_PASSWORD}")
+            print(f"Password for all five demo accounts: {demo_password}")
             for email, _full_name, _role in DEMO_USERS:
                 print(f"  {email}")
             return
@@ -121,7 +131,7 @@ def seed_demo_data() -> None:
             user = User(
                 email=email,
                 full_name=full_name,
-                hashed_password=hash_password(DEMO_PASSWORD),
+                hashed_password=hash_password(demo_password),
                 roles=[role],
                 is_active=True,
                 institution_id=institution.id if role == "institution_applicant" else None,
@@ -350,7 +360,7 @@ def seed_demo_data() -> None:
         db.commit()
 
     print("Synthetic Deposit360 demo dataset created.")
-    print(f"Password for all five demo accounts: {DEMO_PASSWORD}")
+    print(f"Password for all five demo accounts: {demo_password}")
     for email, _full_name, _role in DEMO_USERS:
         print(f"  {email}")
 

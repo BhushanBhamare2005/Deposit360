@@ -28,6 +28,9 @@ through the Render dashboard:
 - `DATABASE_URL`: the Neon URL in the SQLAlchemy format above.
 - `CORS_ORIGINS`: the exact production Vercel origin, for example
   `https://deposit360.vercel.app` (no trailing slash).
+- `DEMO_PASSWORD`: a private, unique password to use only if synthetic demo
+  accounts are seeded. Production seeding refuses to use the published local
+  demo password.
 - `STORAGE_S3_ENDPOINT_URL`: `https://<account-id>.r2.cloudflarestorage.com`.
 - `STORAGE_S3_BUCKET`: the private bucket name.
 - `STORAGE_S3_ACCESS_KEY_ID` and `STORAGE_S3_SECRET_ACCESS_KEY`: the R2 token

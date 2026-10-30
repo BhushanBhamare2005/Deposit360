@@ -13,6 +13,8 @@ services:
         value: /api/v1
       - key: SECRET_KEY
         generateValue: true
+      - key: DEMO_PASSWORD
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: CORS_ORIGINS
