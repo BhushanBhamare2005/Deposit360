@@ -112,7 +112,6 @@ def seed_demo_data() -> None:
             existing.contact_email = DEMO_USERS[0][0]
             db.commit()
             print("Synthetic demo records already exist; role account emails are synchronized.")
-            print(f"Password for all five demo accounts: {demo_password}")
             for email, _full_name, _role in DEMO_USERS:
                 print(f"  {email}")
             return
@@ -358,9 +357,7 @@ def seed_demo_data() -> None:
             )
         )
         db.commit()
-
     print("Synthetic Deposit360 demo dataset created.")
-    print(f"Password for all five demo accounts: {demo_password}")
     for email, _full_name, _role in DEMO_USERS:
         print(f"  {email}")
 

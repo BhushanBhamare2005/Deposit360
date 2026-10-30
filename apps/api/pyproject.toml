@@ -48,4 +48,4 @@ ignore = ["B008"]
 testpaths = ["tests"]
 
 [tool.vercel.scripts]
-build = "alembic upgrade head"
+build = 'alembic upgrade head && if [ -n "$DEMO_PASSWORD" ]; then python -m app.demo_seed; fi'

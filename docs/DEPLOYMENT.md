@@ -36,20 +36,22 @@ stores durable application data, and private Vercel Blob stores PDF evidence.
    Set `DEMO_PASSWORD` only if you intend to seed the synthetic role-play
    accounts. The quick-login buttons publish the shared demo password in the
    browser bundle, so this is appropriate only for fabricated demo data. Never
-   use that shared account password with real customer data.
+   use that shared account password with real customer data. Seed output lists
+   demo email addresses but does not print passwords into deployment logs.
 
 5. Redeploy after connecting storage and configuring the environment variables.
    The API service's build command applies Alembic migrations using that
-   environment's database. The FastAPI startup skips migrations and the
-   in-process scheduler on Vercel; lifecycle states still refresh when the
-   deposits list is requested.
+   environment's database. When `DEMO_PASSWORD` is configured, it also seeds
+   the fabricated role-play accounts and demo records into that environment's
+   database. The seed operation is idempotent. The FastAPI startup skips
+   migrations and the in-process scheduler on Vercel; lifecycle states still
+   refresh when the deposits list is requested.
 
 ## Seed synthetic demo accounts (optional)
 
-To seed the five role accounts, pull the intended environment variables to a
-local ignored env file using the Vercel CLI, then run the seed script from
-`apps/api`. Keep the file private and do not paste its contents into chat or
-commit it:
+To seed the five role accounts locally, set `DEMO_PASSWORD` and the intended
+database environment variables, then run the seed script from `apps/api`. Keep
+any local env file private and do not paste its contents into chat or commit it:
 
 ```powershell
 cd apps/api
